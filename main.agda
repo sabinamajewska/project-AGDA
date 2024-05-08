@@ -62,3 +62,37 @@ rownoscDlaN {suc x} {suc y} with (rownoscDlaN {x} {y})
 
 store : ℕ → MachineState → Context
 store x state = x to accumulator state :+: memory state
+
+-- typ dzięki ktoremu jestesmy w stanie wywnioskować czy dane przypisanie jest w kontekście
+data _contains_ : Context → Assignment → Set where
+  top : ∀ { a : Assignment } → ∀ { c : Context }
+    →  (a :+: c) contains a
+  tail : ∀ { x y } → ∀ { m n } → ∀ { c : Context  }
+    → ( c contains ( x to n ) )
+    → ¬ ( x ≡ y ) -- dodatkowo zakładamy, że jeśli sprawdzamy, czy zmienna jest dalej w ciągu, to upewniamy się,
+                  -- że nie jest na pierwszej pozycji
+    → ( y to m :+: c ) contains (x to n)
+
+_contains?_ : (c : Context) → (a : Assignment) → Dec (c contains a)
+_contains?_ empty _ = no (λ ())
+_contains?_ (x to n :+: c) (y to m) with rownoscDlaN {x} {y}
+... | yes x=y with rownoscDlaN {n} {m}
+...    | yes n=m = yes (lemma x=y n=m) 
+       where 
+          lemma : ∀ {x y n m} → ∀ { c : Context } → x ≡ y → n ≡ m → (( x to n ) :+: c) contains (y to m)
+          lemma refl refl = top
+...    | no n≠m = no (lemma x=y n≠m)
+       where 
+          lemma : ∀ {x y n m} → ∀ { c : Context } → x ≡ y → ¬ (n ≡ m) → ¬ ((( x to n ) :+: c) contains (y to m))
+          lemma refl n≠m top = n≠m refl
+          lemma refl n≠m (tail c x≠y) = x≠y refl
+_contains?_ (x to n :+: c) (y to m) | no x≠y with _contains?_ c (y to m)
+...    | yes yinc = yes (tail yinc (lemma x≠y))
+        where 
+            lemma : ¬ x ≡ y → ¬ (y ≡ x)
+            lemma x≠y refl = x≠y refl
+...    | no ynotinc = no ((lemma x≠y ynotinc))
+       where 
+          lemma : ∀ {x y n m} → ¬ x ≡ y → ¬ (c contains (y to m)) → ¬ ((x to n :+: c) contains (y to m))
+          lemma x≠y ynotinc top = x≠y refl
+          lemma x≠y ynotinc (tail yinxc x) = ynotinc yinxc
