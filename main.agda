@@ -44,3 +44,21 @@ record MachineState : Set where
     accumulator : ℕ
     memory      : Context
 open MachineState public
+
+-- Define an initial state with zeroed memory and accumulator
+initState : MachineState
+initState = record { accumulator = 0; memory = empty }
+
+rownoscDlaN : ∀ {x y : ℕ} → Dec (x ≡ y)
+rownoscDlaN {zero} {zero} = yes refl
+rownoscDlaN {zero} {suc y} = no (λ())
+rownoscDlaN {suc x} {zero} = no (λ ())
+rownoscDlaN {suc x} {suc y} with (rownoscDlaN {x} {y})
+... | yes x=y = yes (cong suc x=y)
+... | no x≠y = no (lemat x≠y) 
+      where
+        lemat : ¬ x ≡ y → suc x ≡ suc y → ⊥
+        lemat p1 refl = p1 refl
+
+store : ℕ → MachineState → Context
+store x state = x to accumulator state :+: memory state
