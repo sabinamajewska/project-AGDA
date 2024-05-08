@@ -96,3 +96,16 @@ _contains?_ (x to n :+: c) (y to m) | no x≠y with _contains?_ c (y to m)
           lemma : ∀ {x y n m} → ¬ x ≡ y → ¬ (c contains (y to m)) → ¬ ((x to n :+: c) contains (y to m))
           lemma x≠y ynotinc top = x≠y refl
           lemma x≠y ynotinc (tail yinxc x) = ynotinc yinxc
+
+retrieve : ℕ → Context → ℕ
+retrieve _ empty = 0
+retrieve x (y to v :+: c) with rownoscDlaN {x} {y}
+... | yes _ = v
+... | no _ = retrieve x c
+
+opperSemantics : Opper → MachineState → MachineState
+opperSemantics (SetOp n) state = record state { accumulator = n }
+opperSemantics (Load x) state = record state { accumulator = retrieve x (memory state) }
+opperSemantics (Store x) state = record state { memory = store x state }
+opperSemantics (Add x) state = record state { accumulator = accumulator state + retrieve x (memory state) }
+opperSemantics (Mul x) state = record state { accumulator = accumulator state * retrieve x (memory state) }
