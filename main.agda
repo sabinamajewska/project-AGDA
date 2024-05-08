@@ -109,3 +109,17 @@ opperSemantics (Load x) state = record state { accumulator = retrieve x (memory 
 opperSemantics (Store x) state = record state { memory = store x state }
 opperSemantics (Add x) state = record state { accumulator = accumulator state + retrieve x (memory state) }
 opperSemantics (Mul x) state = record state { accumulator = accumulator state * retrieve x (memory state) }
+
+-- Define the semantics function for evaluating assembly programs
+s2 : List Opper → MachineState
+s2 l = (go initState l)
+  where
+    go : MachineState → List Opper → MachineState
+    go state [] = state
+    go state (op ∷ ops) = go (opperSemantics op state) ops
+
+-- Define the compiler from L1 to L2
+c : Expr → ℕ → List Opper
+c (Const n) i = [ SetOp n ] ++ [ Store i ]
+c (Add e1 e2) i = c e1 i ++ c e2 (i + 1) ++ [ Load (i + 1) ] ++ [ Add i ] ++ [ Store i ]
+c (Mult e1 e2) i = c e1 i ++ c e2 (i + 1) ++ [ Load (i + 1) ] ++ [ Mul i ] ++ [ Store i ]
