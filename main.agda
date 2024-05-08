@@ -19,3 +19,28 @@ s1 : Expr → ℕ
 s1 (Const n) = n
 s1 (Add e1 e2) = s1 e1 + s1 e2
 s1 (Mult e1 e2) = s1 e1 * s1 e2
+
+
+-- Define the operations for the toy assembly language
+data Opper : Set where
+  SetOp : ℕ → Opper
+  Load  : ℕ → Opper
+  Store : ℕ → Opper
+  Add   : ℕ → Opper
+  Mul   : ℕ → Opper
+
+data Assignment : Set where
+  _to_ : ℕ → ℕ → Assignment
+
+data Context : Set where
+  empty : Context
+  _:+:_ : Assignment → Context → Context
+
+infixr 5 _:+:_
+
+-- Define the state of the machine
+record MachineState : Set where
+  field
+    accumulator : ℕ
+    memory      : Context
+open MachineState public
