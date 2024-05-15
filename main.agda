@@ -8,20 +8,20 @@ open import Data.List using (List; _++_; []; _∷_; [_])
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (¬_)
 
--- Define the data type for arithmetic expressions
+-- Jezyk 1 - stale, dodawanie i mnozenie
 data Expr : Set where
   Const : ℕ → Expr
   Add   : Expr → Expr → Expr
   Mult  : Expr → Expr → Expr
 
--- Define the semantics function for evaluating arithmetic expressions
+-- semantyka jezyka 1
 s1 : Expr → ℕ
 s1 (Const n) = n
 s1 (Add e1 e2) = s1 e1 + s1 e2
 s1 (Mult e1 e2) = s1 e1 * s1 e2
 
 
--- Define the operations for the toy assembly language
+-- Jezyk 2 - prosty assembler z pamiecia, operacje ustawienia akumulatora, wczytania z pamieci, zapisu do pamieci, dodawania i mnozenia
 data Opper : Set where
   SetOp : ℕ → Opper
   Load  : ℕ → Opper
@@ -29,26 +29,31 @@ data Opper : Set where
   Add   : ℕ → Opper
   Mul   : ℕ → Opper
 
+
+-- przypisanie do komorki wartosci
 data Assignment : Set where
   _to_ : ℕ → ℕ → Assignment
 
+
+-- kontekst - lista przypisan
 data Context : Set where
   empty : Context
   _:+:_ : Assignment → Context → Context
 
 infixr 5 _:+:_
 
--- Define the state of the machine
+-- Stan calego programu, stan akumulatora i calej pamieci
 record MachineState : Set where
   field
     accumulator : ℕ
     memory      : Context
 open MachineState public
 
--- Define an initial state with zeroed memory and accumulator
+-- pusty stan
 initState : MachineState
 initState = record { accumulator = 0; memory = empty }
 
+-- porownywanie liczb naturalnych
 rownoscDlaN : ∀ {x y : ℕ} → Dec (x ≡ y)
 rownoscDlaN {zero} {zero} = yes refl
 rownoscDlaN {zero} {suc y} = no (λ())
@@ -60,10 +65,7 @@ rownoscDlaN {suc x} {suc y} with (rownoscDlaN {x} {y})
         lemat : ¬ x ≡ y → suc x ≡ suc y → ⊥
         lemat p1 refl = p1 refl
 
-store : ℕ → MachineState → Context
-store x state = x to accumulator state :+: memory state
-
--- typ dzięki ktoremu jestesmy w stanie wywnioskować czy dane przypisanie jest w kontekście
+-- typ dzięki ktoremu jestesmy w stanie wywnioskować czy dane przypisanie jest w kontekście - moze sie okazac niepotrzebne
 data _contains_ : Context → Assignment → Set where
   top : ∀ { a : Assignment } → ∀ { c : Context }
     →  (a :+: c) contains a
@@ -73,6 +75,8 @@ data _contains_ : Context → Assignment → Set where
                   -- że nie jest na pierwszej pozycji
     → ( y to m :+: c ) contains (x to n)
 
+
+-- funkcja pomocnicza do sprawdzania czy przypisanie jest w kontekście
 _contains?_ : (c : Context) → (a : Assignment) → Dec (c contains a)
 _contains?_ empty _ = no (λ ())
 _contains?_ (x to n :+: c) (y to m) with rownoscDlaN {x} {y}
@@ -97,12 +101,19 @@ _contains?_ (x to n :+: c) (y to m) | no x≠y with _contains?_ c (y to m)
           lemma x≠y ynotinc top = x≠y refl
           lemma x≠y ynotinc (tail yinxc x) = ynotinc yinxc
 
+-- funkcja pomocnicza do pobierania wartosci z kontekstu
 retrieve : ℕ → Context → ℕ
 retrieve _ empty = 0
 retrieve x (y to v :+: c) with rownoscDlaN {x} {y}
 ... | yes _ = v
 ... | no _ = retrieve x c
 
+-- funkcja pomocnicza do dodawania przypisan do kontekstu
+store : ℕ → MachineState → Context
+store x state = x to accumulator state :+: memory state
+
+
+-- semantyka dla jezyka 2 - co sie dzieje ze stanem jak wykonujemy pewna operacje
 opperSemantics : Opper → MachineState → MachineState
 opperSemantics (SetOp n) state = record state { accumulator = n }
 opperSemantics (Load x) state = record state { accumulator = retrieve x (memory state) }
@@ -110,7 +121,7 @@ opperSemantics (Store x) state = record state { memory = store x state }
 opperSemantics (Add x) state = record state { accumulator = accumulator state + retrieve x (memory state) }
 opperSemantics (Mul x) state = record state { accumulator = accumulator state * retrieve x (memory state) }
 
--- Define the semantics function for evaluating assembly programs
+-- jak wykonuje sie caly program - po kolei komendy, ale zaczynamy od pustego stanu - nie konczymy na pustej pamieci, a moze powinnismy?
 s2 : List Opper → MachineState
 s2 l = (go initState l)
   where
@@ -118,26 +129,32 @@ s2 l = (go initState l)
     go state [] = state
     go state (op ∷ ops) = go (opperSemantics op state) ops
 
--- Define the compiler from L1 to L2
+
+
+-- zamiana jezyka 1 na 2
 c : Expr → ℕ → List Opper
 c (Const n) i = [ SetOp n ] ++ [ Store i ]
 c (Add e1 e2) i = c e1 i ++ c e2 (i + 1) ++ [ Load (i + 1) ] ++ [ Add i ] ++ [ Store i ]
 c (Mult e1 e2) i = c e1 i ++ c e2 (i + 1) ++ [ Load (i + 1) ] ++ [ Mul i ] ++ [ Store i ]
 
+
+-- lemat 1 - tu miało byc, ze jak wykonamy efekt kompilacji czegos to w i-tej komorce bedzie wartosc e
 l1 : ∀ { i : ℕ } → ∀ (e : Expr) → memory (s2 (c e i)) contains (i to s1 e)
 l1 (Const n) = top
 l1 (Add e1 e2) = {!  !}
 l1 (Mult e1 e2) = {!   !}
 
--- -- Map that creates a machine state from a natural number
+-- w tresci zadania , nie ma nic w pamieci, a w akumulatorze jest n
 t : ℕ → MachineState
 t n = record { accumulator = n; memory = empty }
 
+-- przyklady
 example : s1 (Add (Const 2) (Const 3)) ≡ accumulator (s2 (c (Add (Const 2) (Const 3)) 0))
 example = refl
 
 complicatedExample : s1 (Mult (Add (Const 2) (Const 3)) (Const 4)) ≡ accumulator (s2 (c (Mult (Add (Const 2) (Const 3)) (Const 4)) 0))
 complicatedExample = refl
+
 
 addEval : ∀ (e1 e2 : Expr) → s1 (Add e1 e2) ≡ s1 e1 + s1 e2
 addEval e1 e2 = refl
@@ -145,6 +162,7 @@ addEval e1 e2 = refl
 add∘s1 : ∀ (x : ℕ) → (accumulator (t x)) ≡ x 
 add∘s1 x = refl
 
+-- lemat pomocniczy do dowodu, nic nie wyszło
 lemma : ∀ (e1 e2 : Expr) → (i : ℕ) → (accumulator (s2 (c (Add e1 e2) i))) ≡ accumulator (s2 (c e1 i)) + accumulator (s2 (c e2 (i + 1)))
 lemma (Const x) (Const x₁) i = {!   !}
 lemma (Const x) (Add e2 e3) i = {!   !}
@@ -152,7 +170,7 @@ lemma (Const x) (Mult e2 e3) i = {!   !}
 lemma (Add e1 e3) e2 i = {!   !}
 lemma (Mult e1 e3) e2 i = {!   !}
 
--- Prove that `t * s1 = s2 * c`
+-- To chcemy udowodnic `t * s1 = s2 * c`?
 proof : (e : Expr) → ( i : ℕ ) → (accumulator (s2 (c e i))) ≡ s1 e
 proof (Const x) _ = refl
 proof (Add e1 e2) i = {!   !}
