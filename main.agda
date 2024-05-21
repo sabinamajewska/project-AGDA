@@ -30,7 +30,7 @@ data Opper : Set where
   Mul   : ℕ → Opper
 
 
--- przypisanie do komorki wartosci
+-- przypisanie do komorki wartosci - mozna dodac aliasy, zeby było wiadomo o co chodzi odrazu
 data Assignment : Set where
   _to_ : ℕ → ℕ → Assignment
 
@@ -129,7 +129,7 @@ s2 l = (go initState l)
     go state [] = state
     go state (op ∷ ops) = go (opperSemantics op state) ops
 
-
+-- dodac jakis przyklad, 3 operacje
 
 -- zamiana jezyka 1 na 2
 c : Expr → ℕ → List Opper
