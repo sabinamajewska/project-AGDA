@@ -8,6 +8,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Data.List using (List; _++_; []; _∷_; [_])
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (¬_)
+open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
 
 -- Jezyk 1 - stale, dodawanie i mnozenie
 data Expr : Set where
@@ -92,14 +93,14 @@ c' (Const n) i = [ SetOp n ] ++ [ Store (i + 1) ]
 c' Add i = [ Load (i ∸ 1) ] ++ [ Add i ] ++ [ Store (i ∸ 1) ]
 c' Mult i = [ Load (i ∸ 1) ] ++ [ Mul i ] ++ [ Store (i ∸ 1) ]
 
+go : List Expr → ℕ → List Opper
+go [] _ = []
+go ((Const n) ∷ es) i = c' (Const n) i ++ go es (i + 1)
+go (Add ∷ es) i = c' Add i ++ go es (i ∸ 1)
+go (Mult ∷ es) i = c' Mult i ++ go es (i ∸ 1)
+
 c : List Expr → List Opper
 c l = go l 0
-  where
-    go : List Expr → ℕ → List Opper
-    go [] _ = []
-    go ((Const n) ∷ es) i = c' (Const n) i ++ go es (i + 1)
-    go (Add ∷ es) i = c' Add i ++ go es (i ∸ 1)
-    go (Mult ∷ es) i = c' Mult i ++ go es (i ∸ 1)
 
 -- w tresci zadania , nie ma nic w pamieci, a w akumulatorze jest n
 t : ℕ → MachineState
