@@ -18,7 +18,7 @@ data Expr : Set where
 
 -- semantyka jezyka 1
 s1 : List ℕ → List Expr → ℕ
-s1 [] ((Const n) ∷ ls) = n
+s1 vs ((Const n) ∷ ls) = s1 (n ∷ vs) ls
 s1 (x ∷ y ∷ l) (Add ∷ ls) = s1 ((x + y) ∷ l) ls
 s1 (x ∷ y ∷ l) (Mult ∷ ls) = s1 ((x * y) ∷ l) ls
 s1 _ _ = 0
@@ -106,17 +106,19 @@ c l = go l 0
 t : ℕ → MachineState
 t n = record { accumulator = n; memory = empty }
 
--- -- lemat pomocniczy do dowodu, nic nie wyszło
--- lemma : ∀ (e1 e2 : Expr) → (i : ℕ) → (accumulator (s2 (c (Add e1 e2) i))) ≡ accumulator (s2 (c e1 i)) + accumulator (s2 (c e2 (i + 1)))
--- lemma (Const x) (Const x₁) i = {!   !}
--- lemma (Const x) (Add e2 e3) i = {!   !}
--- lemma (Const x) (Mult e2 e3) i = {!   !}
--- lemma (Add e1 e3) e2 i = {!   !}
--- lemma (Mult e1 e3) e2 i = {!   !}
 
 -- To chcemy udowodnic `t * s1 = s2 * c`?
 proof : (l : List Expr) → ( i : ℕ ) → (accumulator (s2 (c l))) ≡ (s1 [] l)
-proof ((Const x) ∷ ls) _ = {!   !}
+proof ((Const x) ∷ ls) i = {!   !}
+  where
+    thes : (i : ℕ) → (accumulator (s2 (c ls))) ≡ (s1 [] ls)
+    thes i = {!   !}
+    thes2 : s1 [] ((Const x) ∷ ls) ≡ x
+    thes2 = {!   !}
+    thes3 : (accumulator (s2 [ SetOp x ])) ≡ x
+    thes3 = {!   !}
+    thes4 : (accumulator (s2 [ SetOp x ])) ≡ (s1 [] ((Const x) ∷ ls))
+    thes4 = {!   !}
 proof (Add ∷ ls) i = {!   !}
 proof (Mult ∷ ls) i = {!   !} 
 proof [] _ = refl
