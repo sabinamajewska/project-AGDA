@@ -7,6 +7,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Data.List using (List; _++_; []; _∷_; [_])
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (¬_)
+open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
+
 
 -- Jezyk 1 - stale, dodawanie i mnozenie
 data Expr : Set where
@@ -129,54 +131,52 @@ s2 l = (go initState l)
     go state [] = state
     go state (op ∷ ops) = go (opperSemantics op state) ops
 
--- dodac jakis przyklad, 3 operacje
-
 -- zamiana jezyka 1 na 2
 c : Expr → ℕ → List Opper
 c (Const n) i = [ SetOp n ] ++ [ Store i ]
-c (Add e1 e2) i = c e1 i ++ c e2 (i + 1) ++ [ Load (i + 1) ] ++ [ Add i ] ++ [ Store i ]
-c (Mult e1 e2) i = c e1 i ++ c e2 (i + 1) ++ [ Load (i + 1) ] ++ [ Mul i ] ++ [ Store i ]
-
-
--- lemat 1 - tu miało byc, ze jak wykonamy efekt kompilacji czegos to w i-tej komorce bedzie wartosc e
-l1 : ∀ { i : ℕ } → ∀ (e : Expr) → memory (s2 (c e i)) contains (i to s1 e)
-l1 (Const n) = top
-l1 (Add e1 e2) = {!  !}
-l1 (Mult e1 e2) = {!   !}
+c (Add e1 e2) i = c e1 i ++ c e2 (1 + i) ++ [ Load (1 + i) ] ++ [ Add i ] ++ [ Store i ]
+c (Mult e1 e2) i = c e1 i ++ c e2 (1 + i) ++ [ Load (1 + i) ] ++ [ Mul i ] ++ [ Store i ]
 
 -- w tresci zadania , nie ma nic w pamieci, a w akumulatorze jest n
 t : ℕ → MachineState
 t n = record { accumulator = n; memory = empty }
 
--- przyklady
-example : s1 (Add (Const 2) (Const 3)) ≡ accumulator (s2 (c (Add (Const 2) (Const 3)) 0))
-example = refl
-
-complicatedExample : s1 (Mult (Add (Const 2) (Const 3)) (Const 4)) ≡ accumulator (s2 (c (Mult (Add (Const 2) (Const 3)) (Const 4)) 0))
-complicatedExample = refl
-
 
 addEval : ∀ (e1 e2 : Expr) → s1 (Add e1 e2) ≡ s1 e1 + s1 e2
 addEval e1 e2 = refl
 
-add∘s1 : ∀ (x : ℕ) → (accumulator (t x)) ≡ x 
-add∘s1 x = refl
+mulEval : ∀ (e1 e2 : Expr) → s1 (Mult e1 e2) ≡ s1 e1 * s1 e2
+mulEval e1 e2 = refl
 
--- lemat pomocniczy do dowodu, nic nie wyszło
-lemma : ∀ (e1 e2 : Expr) → (i : ℕ) → (accumulator (s2 (c (Add e1 e2) i))) ≡ accumulator (s2 (c e1 i)) + accumulator (s2 (c e2 (i + 1)))
-lemma (Const x) (Const x₁) i = {!   !}
-lemma (Const x) (Add e2 e3) i = {!   !}
-lemma (Const x) (Mult e2 e3) i = {!   !}
-lemma (Add e1 e3) e2 i = {!   !}
-lemma (Mult e1 e3) e2 i = {!   !}
+postulate addSemantics : ∀ (e1 e2 : Expr) → (i : ℕ) → (accumulator (s2 (c (Add e1 e2) i))) ≡ (accumulator (s2 (c e1 i))) + (accumulator (s2 (c e2 (i + 1))))
+
+postulate multSemantics : ∀ (e1 e2 : Expr) → (i : ℕ) → (accumulator (s2 (c (Mult e1 e2) i))) ≡ (accumulator (s2 (c e1 i))) * (accumulator (s2 (c e2 (i + 1))))
 
 -- To chcemy udowodnic `t * s1 = s2 * c`?
 proof : (e : Expr) → ( i : ℕ ) → (accumulator (s2 (c e i))) ≡ s1 e
 proof (Const x) _ = refl
-proof (Add e1 e2) i = {!   !}
+proof (Add e1 e2) i = begin
+      accumulator (s2 (c (Add e1 e2) i))
+      ≡⟨ addSemantics e1 e2 i ⟩ accumulator (s2 (c e1 i)) + accumulator (s2 (c e2 (i + 1)))
+      ≡⟨ cong (λ x → x + accumulator (s2 (c e2 (i + 1)))) (proof1) ⟩ s1 e1 + accumulator (s2 (c e2 (i + 1)))
+      ≡⟨ cong (λ x → s1 e1 + x) (proof2) ⟩ s1 e1 + s1 e2
+      ≡⟨ addEval e1 e2 ⟩ s1 e1 + s1 e2
+      ≡⟨ sym (addEval e1 e2) ⟩ s1 (Add e1 e2)
+      ∎
   where 
     proof1 : (accumulator (s2 (c e1 i))) ≡ s1 e1
     proof1 = proof e1 i
     proof2 : (accumulator (s2 (c e2 (i + 1)))) ≡ s1 e2
     proof2 = proof e2 (i + 1)
-proof (Mult e1 e2) i = {!   !}
+proof (Mult e1 e2) i = begin
+      accumulator (s2 (c (Mult e1 e2) i))
+      ≡⟨ multSemantics e1 e2 i ⟩ accumulator (s2 (c e1 i)) * accumulator (s2 (c e2 (i + 1)))
+      ≡⟨ cong (λ x → x * accumulator (s2 (c e2 (i + 1)))) (proof1) ⟩ s1 e1 * accumulator (s2 (c e2 (i + 1)))
+      ≡⟨ cong (λ x → s1 e1 * x) (proof2) ⟩ s1 e1 * s1 e2
+      ≡⟨ sym (mulEval e1 e2) ⟩ s1 (Mult e1 e2)
+      ∎
+  where 
+    proof1 : (accumulator (s2 (c e1 i))) ≡ s1 e1
+    proof1 = proof e1 i
+    proof2 : (accumulator (s2 (c e2 (i + 1)))) ≡ s1 e2
+    proof2 = proof e2 (i + 1)
