@@ -180,3 +180,28 @@ proof (Mult e1 e2) i = begin
     proof1 = proof e1 i
     proof2 : (accumulator (s2 (c e2 (i + 1)))) ≡ s1 e2
     proof2 = proof e2 (i + 1)
+
+-- przyklady
+example : s1 (Add (Const 2) (Const 3)) ≡ accumulator (s2 (c (Add (Const 2) (Const 3)) 0))
+example = refl
+
+complicatedExample : s1 (Mult (Add (Const 2) (Const 3)) (Const 4)) ≡ accumulator (s2 (c (Mult (Add (Const 2) (Const 3)) (Const 4)) 0))
+complicatedExample = refl
+
+expr1 : Expr
+expr1 = Add (Mult (Const 2) (Const 4)) (Mult (Add (Const 2) (Mult (Const 3) (Add (Const 8) (Const 5)))) (Const 3))
+
+expr1Compilation : s1 expr1 ≡ accumulator (s2 (c expr1 0))
+expr1Compilation = refl
+
+expr2 : Expr
+expr2 = (Mult (Add (Const 2) (Const 3)) (Add (Const 4) (Const 5)))
+
+expr2Compilation : s1 expr2 ≡ accumulator (s2 (c expr2 0))
+expr2Compilation = refl
+
+s2Expr1 : List Opper
+s2Expr1 = SetOp 2 ∷ Store 0 ∷ SetOp 4 ∷ Store 1 ∷ Load 1 ∷ Add 0 ∷ Store 0 ∷ []
+
+s2Expr2Compilation : accumulator (s2 s2Expr1) ≡ 6
+s2Expr2Compilation = refl
